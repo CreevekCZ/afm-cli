@@ -51,21 +51,36 @@ struct ConversationManager {
     
     /// Build prompt from conversation history
     static func buildPromptFromConversation(_ conversation: Conversation, newPrompt: String) -> String {
-        guard !conversation.messages.isEmpty else {
+        return buildPromptFromMessages(conversation.messages, newPrompt: newPrompt)
+    }
+
+    /// Build prompt from the most recent `maxMessages` messages in the conversation.
+    /// Used as a fallback when the full conversation exceeds the model's context window.
+    /// Returns the truncated prompt and whether truncation occurred.
+    static func buildTruncatedPromptFromConversation(
+        _ conversation: Conversation,
+        newPrompt: String,
+        maxMessages: Int = 6
+    ) -> (prompt: String, wasTruncated: Bool) {
+        let allMessages = conversation.messages
+        guard allMessages.count > maxMessages else {
+            return (buildPromptFromMessages(allMessages, newPrompt: newPrompt), false)
+        }
+        let recentMessages = Array(allMessages.suffix(maxMessages))
+        return (buildPromptFromMessages(recentMessages, newPrompt: newPrompt), true)
+    }
+
+    private static func buildPromptFromMessages(_ messages: [ConversationMessage], newPrompt: String) -> String {
+        guard !messages.isEmpty else {
             return newPrompt
         }
-        
+
         var promptParts: [String] = []
-        
-        // Add conversation history
-        for message in conversation.messages {
+        for message in messages {
             let roleLabel = message.role == "user" ? "User" : "Assistant"
             promptParts.append("\(roleLabel): \(message.content)")
         }
-        
-        // Add current prompt
         promptParts.append("User: \(newPrompt)")
-        
         return promptParts.joined(separator: "\n\n")
     }
 }

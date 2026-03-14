@@ -71,27 +71,17 @@ struct GenerateCommand: Command {
         // Use a semaphore to wait for async completion
         let semaphore = DispatchSemaphore(value: 0)
         var exitCode: Int32 = 0
-        
+        let schemaString = extractSchemaString(from: parsed)
+
         Task {
             do {
-                // Create a language model session
-                // This may fail if Apple Intelligence is not enabled or models are not available
-                let session = LanguageModelSession(instructions: systemPrompt)
-
-                // Get response from the model
-                let outputText: String
-                if let schemaString = extractSchemaString(from: parsed) {
-                    // Structured output path using DynamicGenerationSchema
-                    let schemaDict = try SchemaResolver.resolve(from: schemaString)
-                    let dynamicSchema = try JSONSchemaConverter.convert(schemaDict)
-                    let generationSchema = GenerationSchema(root: dynamicSchema, dependencies: [])
-                    let response = try await session.respond(to: basePrompt, schema: generationSchema)
-                    outputText = try serializeDynamicOutput(response.content)
-                } else {
-                    // Plain text path
-                    let response = try await session.respond(to: basePrompt)
-                    outputText = response.content
-                }
+                let outputText = try await respondHandlingOverflow(
+                    basePrompt: basePrompt,
+                    systemPrompt: systemPrompt,
+                    schemaString: schemaString,
+                    conversation: conversation,
+                    userPrompt: userPrompt
+                )
                 
                 // Save conversation if conversation file is specified
                 if let conversationFilePath = conversationFilePath, var conversation = conversation {
@@ -127,6 +117,51 @@ struct GenerateCommand: Command {
         return exitCode
     }
     
+    // MARK: - Response Helpers
+
+    /// Performs a model respond call, with automatic retry on context window overflow.
+    /// When the conversation history causes the prompt to exceed the 4096-token context window,
+    /// the oldest messages are dropped and the request is retried with only the most recent
+    /// exchanges. If no conversation history is present, the error is rethrown.
+    private func respondHandlingOverflow(
+        basePrompt: String,
+        systemPrompt: String?,
+        schemaString: String?,
+        conversation: Conversation?,
+        userPrompt: String
+    ) async throws -> String {
+        let session = LanguageModelSession(instructions: systemPrompt)
+        do {
+            return try await performRespond(to: basePrompt, session: session, schemaString: schemaString)
+        } catch let genError as LanguageModelSession.GenerationError {
+            guard case .exceededContextWindowSize = genError else { throw genError }
+
+            // Without conversation history there is nothing to truncate — rethrow
+            guard let conversation = conversation else { throw genError }
+
+            CLIUtilities.eprint("Warning: Context window exceeded. Retrying with recent conversation history only...")
+            let (truncatedPrompt, _) = ConversationManager.buildTruncatedPromptFromConversation(
+                conversation, newPrompt: userPrompt
+            )
+            let newSession = LanguageModelSession(instructions: systemPrompt)
+            return try await performRespond(to: truncatedPrompt, session: newSession, schemaString: schemaString)
+        }
+    }
+
+    /// Executes a single model respond call, choosing between plain-text and structured-output paths.
+    private func performRespond(to prompt: String, session: LanguageModelSession, schemaString: String?) async throws -> String {
+        if let schemaString = schemaString {
+            let schemaDict = try SchemaResolver.resolve(from: schemaString)
+            let dynamicSchema = try JSONSchemaConverter.convert(schemaDict)
+            let generationSchema = GenerationSchema(root: dynamicSchema, dependencies: [])
+            let response = try await session.respond(to: prompt, schema: generationSchema)
+            return try serializeDynamicOutput(response.content)
+        } else {
+            let response = try await session.respond(to: prompt)
+            return response.content
+        }
+    }
+
     private func extractPrompt(from parsed: ParsedCommand) -> String? {
         // Priority order:
         // 1. --file or -f option (explicit file)
@@ -290,6 +325,17 @@ struct GenerateCommand: Command {
         // Check for schema conversion errors first
         if let schemaError = error as? JSONSchemaError {
             CLIUtilities.eprint("Error: Invalid schema — \(schemaError.localizedDescription)")
+            return
+        }
+
+        // Check for context window overflow
+        if let genError = error as? LanguageModelSession.GenerationError,
+           case .exceededContextWindowSize = genError {
+            CLIUtilities.eprint("Error: Context window exceeded (model limit: 4096 tokens).")
+            CLIUtilities.eprint("Your prompt is too long. Try:")
+            CLIUtilities.eprint("  - Using a shorter prompt")
+            CLIUtilities.eprint("  - Breaking your request into smaller parts")
+            CLIUtilities.eprint("  - Using --conversation to manage context across calls")
             return
         }
 
