@@ -77,12 +77,21 @@ struct GenerateCommand: Command {
                 // Create a language model session
                 // This may fail if Apple Intelligence is not enabled or models are not available
                 let session = LanguageModelSession(instructions: systemPrompt)
-                
+
                 // Get response from the model
-                let response = try await session.respond(to: basePrompt)
-                
-                // Extract content from response
-                let outputText: String = response.content
+                let outputText: String
+                if let schemaString = extractSchemaString(from: parsed) {
+                    // Structured output path using DynamicGenerationSchema
+                    let schemaDict = try SchemaResolver.resolve(from: schemaString)
+                    let dynamicSchema = try JSONSchemaConverter.convert(schemaDict)
+                    let generationSchema = GenerationSchema(root: dynamicSchema, dependencies: [])
+                    let response = try await session.respond(to: basePrompt, schema: generationSchema)
+                    outputText = try serializeDynamicOutput(response.content)
+                } else {
+                    // Plain text path
+                    let response = try await session.respond(to: basePrompt)
+                    outputText = response.content
+                }
                 
                 // Save conversation if conversation file is specified
                 if let conversationFilePath = conversationFilePath, var conversation = conversation {
@@ -148,6 +157,19 @@ struct GenerateCommand: Command {
         return nil
     }
     
+    /// Extract JSON schema string (file path or inline JSON) from parsed command
+    private func extractSchemaString(from parsed: ParsedCommand) -> String? {
+        parsed.options["schema"] ?? parsed.options["json-schema"]
+    }
+
+    /// Serialize a DynamicGenerationOutput to a pretty-printed JSON string
+    private func serializeDynamicOutput(_ output: DynamicGenerationOutput) throws -> String {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        let data = try encoder.encode(output)
+        return String(data: data, encoding: .utf8) ?? "{}"
+    }
+
     /// Extract system prompt/pre-prompt from parsed command
     private func extractSystemPrompt(from parsed: ParsedCommand) -> String? {
         // Try --system-prompt or --pre-prompt option
@@ -265,9 +287,15 @@ struct GenerateCommand: Command {
     }
     
     private func handleError(_ error: Error) {
+        // Check for schema conversion errors first
+        if let schemaError = error as? JSONSchemaError {
+            CLIUtilities.eprint("Error: Invalid schema — \(schemaError.localizedDescription)")
+            return
+        }
+
         let errorDescription = error.localizedDescription
         let nsError = error as NSError
-        
+
         // Check for common error scenarios
         if errorDescription.contains("not available") ||
            errorDescription.contains("unavailable") ||

@@ -25,6 +25,13 @@ struct CLIConfig {
           -s, --system-prompt TEXT   Optional pre-prompt to define response style/format
           --pre-prompt TEXT          Alias for --system-prompt
           -c, --conversation PATH Save/load conversation to/from JSON file
+          --schema PATH_OR_JSON  Provide a JSON Schema for structured output.
+                                 Accepts a file path (e.g. schema.json) or
+                                 an inline JSON string. Output will be
+                                 pretty-printed JSON matching the schema.
+                                 Supported types: string, integer, number,
+                                 boolean, object, array.
+          --json-schema PATH_OR_JSON  Alias for --schema
 
         File Input Limitations (--file option):
           - Maximum file size: 1 MB
@@ -40,6 +47,8 @@ struct CLIConfig {
           \(programName) --system-prompt "Respond in JSON format" --prompt "List 3 colors"
           \(programName) -s "Write as a haiku" "Describe the ocean"
           \(programName) -c conversation.json "Continue our discussion"
+          \(programName) --schema schema.json "List three Swift features"
+          \(programName) --schema '{"type":"object","properties":{"name":{"type":"string"},"score":{"type":"number"}},"required":["name","score"]}' "Rate Swift as a language"
         """
     }
 }
