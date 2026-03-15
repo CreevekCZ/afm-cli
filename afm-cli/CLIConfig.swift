@@ -9,7 +9,7 @@ import Foundation
 
 enum CLIConfig {
     static let programName = (CommandLine.arguments.first as NSString?)?.lastPathComponent ?? "afm-cli"
-    static let programVersion = "0.1.1"
+    static let programVersion = "0.2.0"
 
     static var usage: String {
         """

@@ -11,7 +11,7 @@ import Testing
 struct CLIConfigTests {
     @Test("Program version is set")
     func testProgramVersion() {
-        #expect(CLIConfig.programVersion == "0.1.1")
+        #expect(CLIConfig.programVersion == "0.2.0")
     }
 
     @Test("Program name is set")
