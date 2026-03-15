@@ -13,9 +13,9 @@ struct ParsedCommand {
         case version
         case generate
     }
-    
+
     var command: Command
     var flags: Set<String> = []
-    var options: [String: String] = [:] 
+    var options: [String: String] = [:]
     var positionals: [String] = []
 }

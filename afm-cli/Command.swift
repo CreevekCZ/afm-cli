@@ -10,4 +10,3 @@ import Foundation
 protocol Command {
     func execute(_ parsed: ParsedCommand) -> Int32
 }
-

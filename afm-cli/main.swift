@@ -5,6 +5,7 @@
 //  Created by Jan Kožnárek on 14.11.2025.
 //
 
+import Darwin
 import Foundation
 
 // MARK: - Entry Point
@@ -14,10 +15,16 @@ func main() -> Int32 {
     // Drop executable path
     args.removeFirst()
 
-    // If no arguments, show help
+    // If no arguments, check for piped stdin before showing help
     if args.isEmpty {
-        let helpCommand = HelpCommand()
-        return helpCommand.execute(ParsedCommand(command: .help))
+        if isatty(STDIN_FILENO) != 0 {
+            // No pipe and no args — show help
+            let helpCommand = HelpCommand()
+            return helpCommand.execute(ParsedCommand(command: .help))
+        }
+        // Stdin is piped — hand off to generate command which reads from stdin
+        let command = GenerateCommand()
+        return command.execute(ParsedCommand(command: .generate))
     }
 
     let parsed = ArgumentParser.parse(args) ?? ParsedCommand(command: .help)
@@ -42,7 +49,7 @@ func main() -> Int32 {
     case .generate:
         command = GenerateCommand()
     }
-    
+
     return command.execute(parsed)
 }
 

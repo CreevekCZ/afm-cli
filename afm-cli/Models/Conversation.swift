@@ -11,7 +11,7 @@ struct Conversation: Codable {
     var messages: [ConversationMessage]
     var createdAt: Date
     var updatedAt: Date
-    
+
     init(messages: [ConversationMessage] = [], createdAt: Date = Date(), updatedAt: Date = Date()) {
         self.messages = messages
         self.createdAt = createdAt

@@ -8,9 +8,8 @@
 import Foundation
 
 struct HelpCommand: Command {
-    func execute(_ parsed: ParsedCommand) -> Int32 {
+    func execute(_: ParsedCommand) -> Int32 {
         print(CLIConfig.usage)
         return 0
     }
 }
-

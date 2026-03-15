@@ -1,0 +1,10 @@
+{
+  "type": "object",
+  "title": "Person",
+  "properties": {
+    "firstName": { "type": "string", "description": "First name" },
+    "lastName":  { "type": "string", "description": "Last name" },
+    "age":       { "type": "integer", "description": "Age in years" }
+  },
+  "required": ["firstName", "lastName", "age"]
+}

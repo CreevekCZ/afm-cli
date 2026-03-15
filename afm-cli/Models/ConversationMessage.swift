@@ -11,7 +11,7 @@ struct ConversationMessage: Codable {
     let role: String
     let content: String
     let timestamp: Date?
-    
+
     init(role: String, content: String, timestamp: Date? = nil) {
         self.role = role
         self.content = content

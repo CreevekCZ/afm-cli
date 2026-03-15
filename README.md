@@ -5,9 +5,11 @@ A Swift command-line interface tool for interacting with macOS Apple Intelligenc
 ## Features
 
 - **Generate text** using Apple Intelligence foundation models
+- **Structured JSON output** via `--schema` flag using `DynamicGenerationSchema`
 - **Multiple input methods**: command-line arguments, files, or stdin (pipe)
-- **Streaming output** option for real-time generation
 - **File validation** to ensure compatible input
+- **System prompt** support for controlling response style and format
+- **Conversation management** with automatic context window overflow recovery
 - **Help** and **Version** commands
 - Comprehensive error handling for unsupported systems
 
@@ -107,6 +109,57 @@ afm-cli -c conversation.json "Start a conversation"
 afm-cli -c conversation.json "Continue our discussion"
 ```
 
+### Structured JSON Output
+
+Use `--schema` (or `--json-schema`) to request structured output conforming to a JSON Schema. The model uses Apple's `DynamicGenerationSchema` API to guarantee the output matches the requested shape.
+
+**Supported JSON Schema types:** `string`, `integer`, `number`, `boolean`, `object`, `array`
+
+```bash
+# Inline JSON schema
+afm-cli --schema '{"type":"object","properties":{"name":{"type":"string"},"population":{"type":"integer"}},"required":["name","population"]}' \
+  "Tell me about Tokyo"
+
+# Schema from a file
+afm-cli --schema schema.json "List three Swift features"
+
+# Nested schema (object with array property)
+afm-cli --schema '{"type":"object","properties":{"items":{"type":"array","items":{"type":"string"}}}}' \
+  "List five fruits"
+
+# Combined with system prompt
+afm-cli -s "You are a JSON API" --schema schema.json "Rate Swift as a language"
+```
+
+**Example `schema.json`:**
+```json
+{
+  "title": "LanguageRating",
+  "type": "object",
+  "properties": {
+    "name":        { "type": "string",  "description": "Language name" },
+    "score":       { "type": "number",  "description": "Score from 0 to 10" },
+    "pros":        { "type": "array",   "items": { "type": "string" } },
+    "recommended": { "type": "boolean" }
+  },
+  "required": ["name", "score"]
+}
+```
+
+Output is always pretty-printed JSON with sorted keys:
+```json
+{
+  "name": "Swift",
+  "pros": ["Safe", "Fast", "Expressive"],
+  "recommended": true,
+  "score": 9.2
+}
+```
+
+**Options:**
+- `--schema PATH_OR_JSON` — File path or inline JSON schema string
+- `--json-schema PATH_OR_JSON` — Alias for `--schema`
+
 ### System Prompt (Pre-Prompt)
 
 You can optionally provide a system prompt to guide the model's response style, format, or tone:
@@ -153,6 +206,13 @@ cat conversation.json
 - If the file exists, previous messages are loaded and included in the context
 - Each exchange (user prompt + assistant response) is automatically saved
 - The conversation maintains full context for multi-turn dialogues
+
+**Context window overflow recovery:**
+The on-device model has a 4096-token context window. When a long conversation
+exceeds this limit, the tool automatically retries the request keeping only the
+most recent 6 messages (3 exchanges). A warning is printed to stderr so you
+know truncation occurred. The full conversation file is never modified — only
+the in-memory context sent to the model is trimmed.
 
 **Options:**
 - `-c, --conversation PATH` - Path to JSON file for saving/loading conversation
@@ -207,6 +267,21 @@ The tool provides detailed error messages for various scenarios:
 - **Apple Intelligence not enabled**: Runtime error with guidance
 - **Models not downloaded**: Runtime error with troubleshooting steps
 
+### Context Window
+The on-device model supports up to **4096 tokens** for the combined total of
+instructions, conversation history, prompt, and response. When this limit is hit:
+
+- **With `--conversation`**: The oldest messages are automatically dropped and
+  the request is retried. A warning is printed to stderr.
+- **Without `--conversation`**: An error is shown with advice to shorten your
+  prompt or split the request into smaller parts.
+
+### Schema Errors (`--schema`)
+- **Invalid JSON / file not found**: Clear error identifying the input
+- **Missing `"type"` field**: Explains that composition keywords (`$ref`, `allOf`, etc.) are not supported
+- **Unsupported type**: Lists the supported types
+- **Array schema missing `"items"`**: Points to the required field
+
 ### File Input Validation
 - **File does not exist**: Clear error with file path
 - **File too large**: Shows actual size and maximum allowed (1 MB for prompts)
@@ -224,4 +299,3 @@ The tool provides detailed error messages for various scenarios:
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 Created by Jan Kožnárek on 14.11.2025.
-
