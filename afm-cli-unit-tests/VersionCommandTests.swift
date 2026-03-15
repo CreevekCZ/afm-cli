@@ -9,12 +9,11 @@ import Foundation
 import Testing
 
 struct VersionCommandTests {
-	@Test("Version command returns zero exit code")
-	func versionCommandExitCode() {
-		let command = VersionCommand()
-		let parsed = ParsedCommand(command: .version)
-		let exitCode = command.execute(parsed)
-		#expect(exitCode == 0)
-	}
+    @Test("Version command returns zero exit code")
+    func versionCommandExitCode() {
+        let command = VersionCommand()
+        let parsed = ParsedCommand(command: .version)
+        let exitCode = command.execute(parsed)
+        #expect(exitCode == 0)
+    }
 }
-

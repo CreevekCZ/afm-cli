@@ -1,0 +1,126 @@
+disabled_rules:
+  - trailing_whitespace
+  - trailing_comma
+  - line_length
+  - comment_spacing
+  - opening_brace
+
+opt_in_rules:
+  - weak_delegate
+  - unowned_variable_capture
+  - strong_iboutlet
+  - discarded_notification_center_observer
+  - notification_center_detachment
+
+  - unused_closure_parameter
+  - unused_enumerated
+  - unused_optional_binding
+
+  - force_unwrapping
+  - force_cast
+  - fatal_error_message
+  - empty_count
+  - contains_over_first_not_nil
+  - first_where
+  - fallthrough
+  - unneeded_break_in_switch
+  - identical_operands
+  - yoda_condition
+
+  - discouraged_optional_collection
+  - discouraged_optional_boolean
+  - redundant_nil_coalescing
+
+  - overridden_super_call
+  - prohibited_super_call
+  - unavailable_function
+
+  - last_where
+  - contains_over_filter_count
+  - contains_over_filter_is_empty
+  - reduce_into
+  - empty_string
+  - sorted_first_last
+
+  - array_init
+  - untyped_error_in_catch
+  - legacy_random
+  - toggle_bool
+
+  - empty_xctest_method
+  - balanced_xctest_lifecycle
+  - test_case_accessibility
+
+analyzer_rules:
+  - unused_declaration
+  - unused_import
+  - capture_variable
+
+included:
+  - afm-cli
+  - afm-cli-unit-tests
+
+excluded:
+  - Carthage
+  - Pods
+  - .build
+
+identifier_name:
+  allowed_symbols: "_"
+  min_length: 2
+  max_length: 60
+  validates_start_with_lowercase: false
+
+type_name:
+  min_length: 3
+  max_length: 60
+
+file_length:
+  warning: 2000
+  error: 3000
+
+function_body_length:
+  warning: 80
+  error: 200
+
+type_body_length:
+  warning: 400
+  error: 500
+
+cyclomatic_complexity:
+  warning: 10
+  error: 20
+  ignores_case_statements: true
+
+nesting:
+  type_level:
+    warning: 3
+  function_level:
+    warning: 4
+    error: 6
+
+force_unwrapping:
+  severity: error
+
+force_cast:
+  severity: error
+
+weak_delegate:
+  severity: error
+
+unowned_variable_capture:
+  severity: warning
+
+discarded_notification_center_observer:
+  severity: warning
+
+identical_operands:
+  severity: warning
+
+empty_count:
+  severity: warning
+
+redundant_nil_coalescing:
+  severity: warning
+
+reporter: "xcode"

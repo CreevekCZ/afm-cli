@@ -7,10 +7,10 @@
 
 import Foundation
 
-struct CLIConfig {
+enum CLIConfig {
     static let programName = (CommandLine.arguments.first as NSString?)?.lastPathComponent ?? "afm-cli"
     static let programVersion = "0.1.1"
-    
+
     static var usage: String {
         """
         Usage: \(programName) [options] [prompt]
@@ -52,4 +52,3 @@ struct CLIConfig {
         """
     }
 }
-
